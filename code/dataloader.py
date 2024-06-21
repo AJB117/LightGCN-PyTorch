@@ -832,6 +832,7 @@ class LoaderDecoupled(BasicDataset):
         self.traindataSize = 0
         self.testDataSize = 0
 
+        self.solver = config["solver"]
         self.UserEigs, self.ItemEigs = None, None
 
         with open(train_file) as f:
@@ -1073,8 +1074,8 @@ class LoaderDecoupled(BasicDataset):
 
     def getHomogeneousEigs(self, k=64):
         print("loading eigenvectors and eigenvalues for user-user and item-item graphs")
-        fname_user_eigs = f"/s_eigs_user_user_decoupled_eigs_{k}-zero_diag_{self.config['zero_diag']}.pt"
-        fname_item_eigs = f"/s_eigs_item_item_decoupled_eigs_{k}-zero_diag_{self.config['zero_diag']}_.pt"
+        fname_user_eigs = f"/s_eigs_user_user_decoupled_eigs_{k}-zero_diag_{self.config['zero_diag']}_{self.solver}.pt"
+        fname_item_eigs = f"/s_eigs_item_item_decoupled_eigs_{k}-zero_diag_{self.config['zero_diag']}_{self.solver}.pt"
 
         if k == "all":
             k_users = self.n_users
@@ -1091,7 +1092,6 @@ class LoaderDecoupled(BasicDataset):
                 user_eigvals, user_eigvecs = torch.load(self.path + fname_user_eigs)
                 item_eigvals, item_eigvecs = torch.load(self.path + fname_item_eigs)
 
-                pdb.set_trace()
                 assert (
                     user_eigvals.shape[0] == k_users
                     and item_eigvals.shape[0] == k_items
@@ -1137,23 +1137,26 @@ class LoaderDecoupled(BasicDataset):
 
                 t0 = time()
 
-                u, s, vh = sp.linalg.svds(
-                    sp.csr_matrix(self.UserGraph.cpu().to_dense().numpy()),
-                    k=k_users,
-                    which="LM",
-                )
-                user_eigvecs = u
-                item_eigvecs = vh.T
+                if self.solver == "svd":
+                    u, s, vh = sp.linalg.svds(
+                        sp.csr_matrix(self.UserGraph.cpu().to_dense().numpy()),
+                        k=k_users,
+                        which="LM",
+                    )
+                    user_eigvecs = u
+                    item_eigvecs = vh.T
 
-                user_eigvals = s**2
-                item_eigvals = s**2
-
-                # user_eigvals, user_eigvecs = sp.linalg.eigsh(
-                #     user_user_adj, k=k_users, which="LM"
-                # )
-                # item_eigvals, item_eigvecs = sp.linalg.eigsh(
-                #     item_item_adj, k=k_items, which="LM"
-                # )
+                    user_eigvals = s**2
+                    item_eigvals = s**2
+                elif self.solver == "eigen":
+                    user_eigvals, user_eigvecs = sp.linalg.eigsh(
+                        user_user_adj, k=k_users, which="LM"
+                    )
+                    item_eigvals, item_eigvecs = sp.linalg.eigsh(
+                        item_item_adj, k=k_items, which="LM"
+                    )
+                else:
+                    raise ValueError("Invalid solver")
 
                 t1 = time()
                 print(f"time for eigendecomposition: {(t1 - t0):.2f}s")

@@ -50,6 +50,7 @@ config["item_transform_mlp"] = args.item_transform_mlp
 config["model"] = args.model
 config["A_split"] = False
 config["bigdata"] = False
+config["solver"] = args.solver
 
 # used in dataloader
 config["spectral_dim"] = args.spectral_dim

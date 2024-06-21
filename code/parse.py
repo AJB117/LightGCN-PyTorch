@@ -99,5 +99,6 @@ def parse_args():
     parser.add_argument("--spectral_reweight", type=float, default=1.0)
     parser.add_argument("--zero_diag", action="store_true")
     parser.add_argument("--sort_direction", type=str, default="descending")
+    parser.add_argument("--solver", type=str, default="svd")
 
     return parser.parse_args()

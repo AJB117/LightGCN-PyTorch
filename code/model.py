@@ -693,6 +693,11 @@ class LightGCNDecoupled(BasicModel):
         self.UserEigvals, self.UserEigvecs = UserEigs
         self.ItemEigvals, self.ItemEigvecs = ItemEigs
 
+        self.UserEigvals = self.UserEigvals.to(world.device)
+        self.UserEigvecs = self.UserEigvecs.to(world.device)
+        self.ItemEigvals = self.ItemEigvals.to(world.device)
+        self.ItemEigvecs = self.ItemEigvecs.to(world.device)
+
         # # convert usergraph to scipy sparse matrix
         # self.UserGraph = sp.coo_matrix(self.UserGraph.cpu().to_dense().numpy())
 
@@ -837,9 +842,13 @@ class LightGCNDecoupled(BasicModel):
         # )
         # user_emb = initial_user_emb
         # user_emb = initial_user_emb + self.UserProd @ initial_user_emb
-        item_emb = initial_item_emb + self.ItemEigvecs @ (
-            item_eigvals.unsqueeze(1) * (self.ItemEigvecs.t() @ initial_item_emb)
-        )
+
+        #!
+        # item_emb = initial_item_emb + self.ItemEigvecs @ (
+        #     item_eigvals.unsqueeze(1) * (self.ItemEigvecs.t() @ initial_item_emb)
+        item_emb = items_emb
+
+        # )
         # item_emb = initial_item_emb
         # item_emb = initial_item_emb + self.ItemProd @ initial_item_emb
 
