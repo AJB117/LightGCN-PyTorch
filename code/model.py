@@ -8,6 +8,8 @@ Xiangnan He et al. LightGCN: Simplifying and Powering Graph Convolution Network 
 Define models here
 """
 
+import matplotlib.pyplot as plt
+import seaborn as sb
 import scipy.sparse as sp
 import pdb
 import world
@@ -200,8 +202,17 @@ class LightGCN(BasicModel):
         users, items = torch.split(light_out, [self.num_users, self.num_items])
         return users, items
 
-    def getUsersRating(self, users):
+    def getUsersRating(self, users, plot_similarity=False, epoch=0):
         all_users, all_items = self.computer()
+
+        if plot_similarity:
+            # plot heatmap of similarities
+            sim = (all_users @ all_items.t()).cpu().detach().numpy()
+            print("average similarity: ", sim.mean())
+            return
+            # sb.heatmap(sim, cmap="viridis")
+            # plt.savefig(f"similarity_{epoch}.png")
+
         users_emb = all_users[users.long()]
         items_emb = all_items
         rating = self.f(torch.matmul(users_emb, items_emb.t()))
@@ -656,26 +667,34 @@ class LightGCNDecoupled(BasicModel):
                 nn.Linear(self.latent_dim, self.latent_dim),
             )
 
-        self.embedding_user = torch.nn.Embedding(
-            num_embeddings=self.num_users, embedding_dim=self.latent_dim
-        ).to(world.device)
-        # self.embedding_item = torch.zeros(
-        #    self.num_items, self.latent_dim, requires_grad=False
-        # ).to(world.device)
-        # self.embedding_user = torch.zeros(self.num_users, self.latent_dim).to(
-        #     world.device
-        # )
-        self.embedding_item = torch.nn.Embedding(
-            num_embeddings=self.num_items, embedding_dim=self.latent_dim
-        ).to(world.device)
+        print(f"Using {self.config['use_which']} embeddings, gradients for {self.config['use_grad_which']}")
+
+        if self.config["use_which"] in ("user", "both"):
+            self.embedding_user = torch.nn.Embedding(
+                num_embeddings=self.num_users,
+                embedding_dim=self.latent_dim,
+                _freeze=self.config["use_grad_which"] in ("item", "none"),
+            ).to(world.device)
+        if self.config["use_which"] in ("item", "both"):
+            self.embedding_item = torch.nn.Embedding(
+                num_embeddings=self.num_items,
+                embedding_dim=self.latent_dim,
+                _freeze=self.config["use_grad_which"] in ("user", "none"),
+            ).to(world.device)
 
         if self.config["pretrain"] == 0:
             #             nn.init.xavier_uniform_(self.embedding_user.weight, gain=1)
             #             nn.init.xavier_uniform_(self.embedding_item.weight, gain=1)
             #             print('use xavier initilizer')
             # random normal init seems to be a better choice when lightGCN actually don't use any non-linear activation function
-            nn.init.normal_(self.embedding_user.weight, std=0.1)
-            nn.init.normal_(self.embedding_item.weight, std=0.1)
+            init_type = self.config["initialization"]
+            if init_type == "normal":
+                nn.init.normal_(self.embedding_user.weight, std=0.1)
+                nn.init.normal_(self.embedding_item.weight, std=0.1)
+            elif init_type == "orthogonal":
+                nn.init.orthogonal_(self.embedding_user.weight)
+                nn.init.orthogonal_(self.embedding_item.weight)
+
             world.cprint("use NORMAL distribution initilizer")
         else:
             self.embedding_user.weight.data.copy_(
@@ -725,7 +744,7 @@ class LightGCNDecoupled(BasicModel):
         #     ).to(world.device)
 
         self.spectral_reweight = self.config["spectral_reweight"]
-        print(f"reweighting spectral radius by {self.spectral_reweight}")
+        print(f"reweighting eigenvalues by {self.spectral_reweight}")
 
         # I = torch.eye(self.spectral_dim).to(world.device)
         # low_weighting = 0.34 * (1 - self.UserEigvals)
@@ -737,12 +756,12 @@ class LightGCNDecoupled(BasicModel):
         # )
         # self.ItemEigvals = self.UserEigvals
 
-        self.UserEigvals_geom = self.spectral_reweight / (
-            1 - self.UserEigvals * self.spectral_reweight
-        )  # geometric series
-        self.ItemEigvals_geom = self.spectral_reweight / (
-            1 - self.ItemEigvals * self.spectral_reweight
-        )
+        self.UserEigvals_geom = sum(
+            (1 / (1 - w * self.UserEigvals) for w in self.spectral_reweight)
+        ) / len(self.spectral_reweight)  # geometric series
+        self.ItemEigvals_geom = sum(
+            (1 / (1 - w * self.ItemEigvals) for w in self.spectral_reweight)
+        ) / len(self.spectral_reweight)
 
         self.user_eigval_weights = nn.Parameter(torch.ones(self.spectral_dim)).to(
             world.device
@@ -799,76 +818,39 @@ class LightGCNDecoupled(BasicModel):
         """
         propagate methods for lightGCN
         """
-        users_emb = self.embedding_user.weight
-        items_emb = self.embedding_item.weight
-
-        all_emb = torch.cat([users_emb, items_emb])
-        #   torch.split(all_emb , [self.num_users, self.num_items])
-        embs = [all_emb]
-
-        if self.config["dropout"]:
-            if self.training:
-                print("droping")
-                g_droped = self.__dropout(self.keep_prob)
-            else:
-                g_droped = self.Graph
-        else:
-            g_droped = self.Graph
-
-        initial_user_emb = (
-            self.embedding_user.weight + self.ItemGraph @ self.embedding_item.weight
-        )
-        initial_item_emb = (
-            self.embedding_item.weight + self.UserGraph @ self.embedding_user.weight
-        )
-
         user_eigvals = self.UserEigvals_geom
         item_eigvals = self.ItemEigvals_geom
 
-        user_emb = initial_user_emb + self.UserEigvecs @ (
-            user_eigvals.unsqueeze(1) * (self.UserEigvecs.t() @ initial_user_emb)
-        )
-        # user_eigval_weights = self.spectral_reweight / (
-        #     1 - self.user_eigval_weights * self.spectral_reweight
-        # ).view(1, -1)
-        # item_eigval_weights = self.spectral_reweight / (
-        #     1 - self.item_eigval_weights * self.spectral_reweight
-        # ).view(1, -1)
-        # new_user_weights = self.user_eigval_weight_mlp(user_eigval_weights)
-        # new_item_weights = self.item_eigval_weight_mlp(item_eigval_weights)
+        user_emb = self.embedding_user.weight
+        item_emb = self.embedding_item.weight
 
-        # user_emb = initial_user_emb + self.user_ortho_matrix @ (
-        #     new_user_weights.unsqueeze(1) * (self.user_ortho_matrix.t() @ initial_user_emb)
-        # )
-        # user_emb = initial_user_emb
-        # user_emb = initial_user_emb + self.UserProd @ initial_user_emb
-
-        #!
-        # item_emb = initial_item_emb + self.ItemEigvecs @ (
-        #     item_eigvals.unsqueeze(1) * (self.ItemEigvecs.t() @ initial_item_emb)
-        item_emb = items_emb
-
-        # )
-        # item_emb = initial_item_emb
-        # item_emb = initial_item_emb + self.ItemProd @ initial_item_emb
-
-        # embs = torch.stack(embs, dim=1)
-        # # print(embs.size())
-        # light_out = torch.mean(embs, dim=1)
-        # users, items = torch.split(light_out, [self.num_users, self.num_items])
-
-        # pdb.set_trace()
-
-        # embs = torch.stack(embs, dim=1)
-        # light_out = torch.mean(embs, dim=1)
-        # users, items = torch.split(light_out, [self.num_users, self.num_items])
+        if self.config["use_which"] in ("user", "both"):
+            initial_user_emb = (
+                self.embedding_user.weight + self.ItemGraph @ self.embedding_item.weight
+            )
+            user_emb = initial_user_emb + self.UserEigvecs @ (
+                user_eigvals.unsqueeze(1) * (self.UserEigvecs.t() @ initial_user_emb)
+            )
+        if self.config["use_which"] in ("item", "both"):
+            initial_item_emb = (
+                self.embedding_item.weight + self.UserGraph @ self.embedding_user.weight
+            )
+            item_emb = initial_item_emb + self.ItemEigvecs @ (
+                item_eigvals.unsqueeze(1) * self.ItemEigvecs.t() @ initial_item_emb
+            )
 
         users, items = user_emb, item_emb
 
         return users, items
 
-    def getUsersRating(self, users):
+    def getUsersRating(self, users, plot_similarity=False, epoch=0):
         all_users, all_items = self.computer()
+
+        if plot_similarity:
+            sim = (all_users @ all_items.t()).cpu().detach().numpy()
+            print("average similarity: ", sim.mean())
+            return
+
         users_emb = all_users[users.long()]
         items_emb = all_items
         rating = self.f(torch.matmul(users_emb, items_emb.t()))

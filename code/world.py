@@ -51,6 +51,9 @@ config["model"] = args.model
 config["A_split"] = False
 config["bigdata"] = False
 config["solver"] = args.solver
+config["use_which"] = args.use_which
+config["use_grad_which"] = args.use_grad_which
+config["initialization"] = args.initialization
 
 # used in dataloader
 config["spectral_dim"] = args.spectral_dim

@@ -96,9 +96,24 @@ def parse_args():
         help="whether to use a mlp transformation for items",
     )
     parser.add_argument("--spectral_dim", default=64)
-    parser.add_argument("--spectral_reweight", type=float, default=1.0)
+    parser.add_argument("--spectral_reweight", nargs="+", type=float, default=[1.0])
     parser.add_argument("--zero_diag", action="store_true")
     parser.add_argument("--sort_direction", type=str, default="descending")
     parser.add_argument("--solver", type=str, default="svd")
+    parser.add_argument(
+        "--use_which",
+        type=str,
+        default="both",
+        help="whether to use both users and item embedding propagation or just one",
+        choices=["both", "users", "items"],
+    )
+    parser.add_argument(
+        "--use_grad_which",
+        type=str,
+        default="both",
+        help="whether to learn both user and item embeddings or just one",
+        choices=["both", "users", "items"],
+    )
+    parser.add_argument("--initialization", type=str, default="normal", help="initialization method")
 
     return parser.parse_args()

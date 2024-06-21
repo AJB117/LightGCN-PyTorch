@@ -144,6 +144,8 @@ def Test(
             users_list.append(batch_users)
             rating_list.append(rating_K.cpu())
             groundTrue_list.append(groundTrue)
+
+        _ = Recmodel.getUsersRating(batch_users_gpu, plot_similarity=True, epoch=epoch)
         assert total_batch == len(users_list)
         X = zip(rating_list, groundTrue_list)
         if multicore == 1:
