@@ -112,7 +112,7 @@ def parse_args():
         type=str,
         default="none",
         help="which embeddings to freeze",
-        choices=["both", "users", "items", "none"],
+        choices=["both", "users", "items", "neither"],
     )
     parser.add_argument(
         "--no_init_residual",
