@@ -114,6 +114,7 @@ def parse_args():
         help="whether to learn both user and item embeddings or just one",
         choices=["both", "users", "items"],
     )
+    parser.add_argument("--no_init_residual", help="whether to add the initial heterogeneous round of MP embeddings", action="store_false")
     parser.add_argument("--initialization", type=str, default="normal", help="initialization method")
 
     return parser.parse_args()

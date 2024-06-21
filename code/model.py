@@ -828,14 +828,23 @@ class LightGCNDecoupled(BasicModel):
             initial_user_emb = (
                 self.embedding_user.weight + self.ItemGraph @ self.embedding_item.weight
             )
-            user_emb = initial_user_emb + self.UserEigvecs @ (
+            if self.config["no_init_residual"]:
+                residual = 0
+            else:
+                residual = initial_user_emb
+            user_emb = residual + self.UserEigvecs @ (
                 user_eigvals.unsqueeze(1) * (self.UserEigvecs.t() @ initial_user_emb)
             )
+
         if self.config["use_which"] in ("item", "both"):
             initial_item_emb = (
                 self.embedding_item.weight + self.UserGraph @ self.embedding_user.weight
             )
-            item_emb = initial_item_emb + self.ItemEigvecs @ (
+            if self.config["no_init_residual"]:
+                residual = 0
+            else:
+                residual = initial_item_emb
+            item_emb = residual + self.ItemEigvecs @ (
                 item_eigvals.unsqueeze(1) * self.ItemEigvecs.t() @ initial_item_emb
             )
 
