@@ -669,18 +669,17 @@ class LightGCNDecoupled(BasicModel):
 
         print(f"Propagating {self.config['propagate_which']}, freezing gradients for {self.config['freeze_which']}")
 
-        if self.config["propagate_which"] in ("user", "both"):
-            self.embedding_user = torch.nn.Embedding(
-                num_embeddings=self.num_users,
-                embedding_dim=self.latent_dim,
-                _freeze=self.config["freeze_which"] in ("user", "both"),
-            ).to(world.device)
-        if self.config["propagate_which"] in ("item", "both"):
-            self.embedding_item = torch.nn.Embedding(
-                num_embeddings=self.num_items,
-                embedding_dim=self.latent_dim,
-                _freeze=self.config["freeze_which"] in ("item", "both"),
-            ).to(world.device)
+        self.embedding_user = torch.nn.Embedding(
+            num_embeddings=self.num_users,
+            embedding_dim=self.latent_dim,
+            _freeze=self.config["freeze_which"] in ("users", "both"),
+        ).to(world.device)
+
+        self.embedding_item = torch.nn.Embedding(
+            num_embeddings=self.num_items,
+            embedding_dim=self.latent_dim,
+            _freeze=self.config["freeze_which"] in ("items", "both"),
+        ).to(world.device)
 
         if self.config["pretrain"] == 0:
             #             nn.init.xavier_uniform_(self.embedding_user.weight, gain=1)
