@@ -4,7 +4,7 @@ import model
 import utils
 from pprint import pprint
 
-if world.dataset in ["gowalla", "yelp2018", "amazon-book"]:
+if world.dataset in ["gowalla", "yelp2018", "amazon-book", "Movielens1M"]:
     if world.config["model"] == "lgnliteuser":
         dataset = dataloader.LoaderUserUser(path="../data/" + world.dataset)
     elif world.config["model"] == "lgndecoupled":
