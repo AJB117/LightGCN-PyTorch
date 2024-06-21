@@ -823,7 +823,7 @@ class LightGCNDecoupled(BasicModel):
         user_emb = self.embedding_user.weight
         item_emb = self.embedding_item.weight
 
-        if self.config["propagate_which"] in ("user", "both"):
+        if self.config["propagate_which"] in ("users", "both"):
             initial_user_emb = (
                 self.embedding_user.weight + self.ItemGraph @ self.embedding_item.weight
             )
@@ -835,7 +835,7 @@ class LightGCNDecoupled(BasicModel):
                 user_eigvals.unsqueeze(1) * (self.UserEigvecs.t() @ initial_user_emb)
             )
 
-        if self.config["propagate_which"] in ("item", "both"):
+        if self.config["propagate_which"] in ("items", "both"):
             initial_item_emb = (
                 self.embedding_item.weight + self.UserGraph @ self.embedding_user.weight
             )
