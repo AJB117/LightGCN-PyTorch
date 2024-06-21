@@ -51,8 +51,8 @@ config["model"] = args.model
 config["A_split"] = False
 config["bigdata"] = False
 config["solver"] = args.solver
-config["use_which"] = args.use_which
-config["use_grad_which"] = args.use_grad_which
+config["propagate_which"] = args.propagate_which
+config["freeze_which"] = args.freeze_which
 config["initialization"] = args.initialization
 config["no_init_residual"] = args.no_init_residual
 

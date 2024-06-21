@@ -667,19 +667,19 @@ class LightGCNDecoupled(BasicModel):
                 nn.Linear(self.latent_dim, self.latent_dim),
             )
 
-        print(f"Propagating {self.config['use_which']}, gradients for {self.config['use_grad_which']}")
+        print(f"Propagating {self.config['propagate_which']}, freezing gradients for {self.config['freeze_which']}")
 
-        if self.config["use_which"] in ("user", "both"):
+        if self.config["propagate_which"] in ("user", "both"):
             self.embedding_user = torch.nn.Embedding(
                 num_embeddings=self.num_users,
                 embedding_dim=self.latent_dim,
-                _freeze=self.config["use_grad_which"] in ("item", "none"),
+                _freeze=self.config["freeze_which"] in ("user", "both"),
             ).to(world.device)
-        if self.config["use_which"] in ("item", "both"):
+        if self.config["propagate_which"] in ("item", "both"):
             self.embedding_item = torch.nn.Embedding(
                 num_embeddings=self.num_items,
                 embedding_dim=self.latent_dim,
-                _freeze=self.config["use_grad_which"] in ("user", "none"),
+                _freeze=self.config["freeze_which"] in ("item", "both"),
             ).to(world.device)
 
         if self.config["pretrain"] == 0:
@@ -824,7 +824,7 @@ class LightGCNDecoupled(BasicModel):
         user_emb = self.embedding_user.weight
         item_emb = self.embedding_item.weight
 
-        if self.config["use_which"] in ("user", "both"):
+        if self.config["propagate_which"] in ("user", "both"):
             initial_user_emb = (
                 self.embedding_user.weight + self.ItemGraph @ self.embedding_item.weight
             )
@@ -836,7 +836,7 @@ class LightGCNDecoupled(BasicModel):
                 user_eigvals.unsqueeze(1) * (self.UserEigvecs.t() @ initial_user_emb)
             )
 
-        if self.config["use_which"] in ("item", "both"):
+        if self.config["propagate_which"] in ("item", "both"):
             initial_item_emb = (
                 self.embedding_item.weight + self.UserGraph @ self.embedding_user.weight
             )

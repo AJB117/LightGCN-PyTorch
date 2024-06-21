@@ -101,18 +101,18 @@ def parse_args():
     parser.add_argument("--sort_direction", type=str, default="descending")
     parser.add_argument("--solver", type=str, default="svd")
     parser.add_argument(
-        "--use_which",
+        "--propagate_which",
         type=str,
         default="both",
         help="whether to use both users and item embedding propagation or just one",
         choices=["both", "users", "items"],
     )
     parser.add_argument(
-        "--use_grad_which",
+        "--freeze_which",
         type=str,
-        default="both",
-        help="whether to learn both user and item embeddings or just one",
-        choices=["both", "users", "items"],
+        default="none",
+        help="which embeddings to freeze",
+        choices=["both", "users", "items", "none"],
     )
     parser.add_argument(
         "--no_init_residual",
