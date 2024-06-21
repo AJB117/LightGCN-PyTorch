@@ -667,7 +667,7 @@ class LightGCNDecoupled(BasicModel):
                 nn.Linear(self.latent_dim, self.latent_dim),
             )
 
-        print(f"Using {self.config['use_which']} embeddings, gradients for {self.config['use_grad_which']}")
+        print(f"Propagating {self.config['use_which']}, gradients for {self.config['use_grad_which']}")
 
         if self.config["use_which"] in ("user", "both"):
             self.embedding_user = torch.nn.Embedding(
