@@ -1006,8 +1006,8 @@ class LoaderDecoupled(BasicDataset):
                 user_adj = sp.load_npz(self.path + fname_user)
                 item_adj = sp.load_npz(self.path + fname_item)
 
-                user_user_adj = user_adj.dot(user_adj.T)
-                item_item_adj = item_adj.dot(item_adj.T)
+                # user_user_adj = user_adj.dot(user_adj.T)
+                # item_item_adj = item_adj.dot(item_adj.T)
                 print("successfully loaded...")
             except:
                 print("generating adjacency matrix")
@@ -1049,8 +1049,8 @@ class LoaderDecoupled(BasicDataset):
                 sp.save_npz(self.path + fname_user, user_adj)
                 sp.save_npz(self.path + fname_item, item_adj)
 
-                user_user_adj = user_adj.dot(user_adj.T)
-                item_item_adj = item_adj.dot(item_adj.T)
+                # user_user_adj = user_adj.dot(user_adj.T)
+                # item_item_adj = item_adj.dot(item_adj.T)
 
             if self.split:
                 self.Graph = self._split_A_hat(norm_adj)
@@ -1060,15 +1060,15 @@ class LoaderDecoupled(BasicDataset):
                 self.UserGraph = self._convert_sp_mat_to_sp_tensor(user_adj)
                 self.ItemGraph = self._convert_sp_mat_to_sp_tensor(item_adj)
 
-                self.UserUserGraph = self._convert_sp_mat_to_sp_tensor(user_user_adj)
-                self.ItemItemGraph = self._convert_sp_mat_to_sp_tensor(item_item_adj)
+                # self.UserUserGraph = self._convert_sp_mat_to_sp_tensor(user_user_adj)
+                # self.ItemItemGraph = self._convert_sp_mat_to_sp_tensor(item_item_adj)
 
                 self.Graph = self.Graph.coalesce().to(world.device)
                 self.UserGraph = self.UserGraph.coalesce().to(world.device)
                 self.ItemGraph = self.ItemGraph.coalesce().to(world.device)
 
-                self.UserUserGraph = self.UserUserGraph.coalesce().to(world.device)
-                self.ItemItemGraph = self.ItemItemGraph.coalesce().to(world.device)
+                # self.UserUserGraph = self.UserUserGraph.coalesce().to(world.device)
+                # self.ItemItemGraph = self.ItemItemGraph.coalesce().to(world.device)
                 print("don't split the matrix")
         return self.Graph, self.UserGraph, self.ItemGraph
 
@@ -1125,12 +1125,6 @@ class LoaderDecoupled(BasicDataset):
                         self.ItemGraph.size(),
                     )
 
-                user_user_adj = torch.sparse.mm(self.UserGraph, self.UserGraph.t())
-                item_item_adj = torch.sparse.mm(self.ItemGraph, self.ItemGraph.t())
-
-                user_user_adj = sp.csr_matrix(user_user_adj.cpu().to_dense().numpy())
-                item_item_adj = sp.csr_matrix(item_item_adj.cpu().to_dense().numpy())
-
                 print(
                     f"generating eigenvectors and eigenvalues with k_users={k_users}, k_items={k_items}"
                 )
@@ -1149,6 +1143,15 @@ class LoaderDecoupled(BasicDataset):
                     user_eigvals = s**2
                     item_eigvals = s**2
                 elif self.solver == "eigen":
+                    user_user_adj = torch.sparse.mm(self.UserGraph, self.UserGraph.t())
+                    item_item_adj = torch.sparse.mm(self.ItemGraph, self.ItemGraph.t())
+
+                    user_user_adj = sp.csr_matrix(
+                        user_user_adj.cpu().to_dense().numpy()
+                    )
+                    item_item_adj = sp.csr_matrix(
+                        item_item_adj.cpu().to_dense().numpy()
+                    )
                     user_eigvals, user_eigvecs = sp.linalg.eigsh(
                         user_user_adj, k=k_users, which="LM"
                     )

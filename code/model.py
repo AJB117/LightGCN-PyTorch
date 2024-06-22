@@ -667,7 +667,9 @@ class LightGCNDecoupled(BasicModel):
                 nn.Linear(self.latent_dim, self.latent_dim),
             )
 
-        print(f"Propagating {self.config['propagate_which']}, freezing gradients for {self.config['freeze_which']}")
+        print(
+            f"Propagating {self.config['propagate_which']}, freezing gradients for {self.config['freeze_which']}"
+        )
 
         self.embedding_user = torch.nn.Embedding(
             num_embeddings=self.num_users,
@@ -788,8 +790,8 @@ class LightGCNDecoupled(BasicModel):
         ).to(world.device)
         nn.init.orthogonal_(self.item_ortho_matrix)
 
-        self.UserUserGraph = self.dataset.ItemItemGraph  # messed up naming convention
-        self.ItemItemGraph = self.dataset.UserUserGraph
+        # self.UserUserGraph = self.dataset.ItemItemGraph  # messed up naming convention
+        # self.ItemItemGraph = self.dataset.UserUserGraph
 
         print(f"lgn is already to go(dropout:{self.config['dropout']})")
 
